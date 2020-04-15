@@ -5,21 +5,21 @@
 // x and y denote fixed_point numbers in 17.14 format
 // n is an integer
 
-int int_to_fp (int n);
-int fp_to_int_round (int x);
-int fp_to_int (int x);
+int int_to_fp (int n);         // int to fp
+int fp_to_int_round (int x);   // fp to int (rounding to nearest)
+int fp_to_int (int x);         // fp to int (rounding toward zero)
 
-int add_fp (int x, int y);
-int add_mixed (int x, int n);
+int add_fp (int x, int y);     // + between fp numbers
+int add_mixed (int x, int n);  // + between fp number and int
 
-int sub_fp (int x, int y);
-int sub_mixed (int x, int n);
+int sub_fp (int x, int y);     // - between fp numbers
+int sub_mixed (int x, int n);  // - between fp number and int
 
-int mult_fp (int x, int y);
-int mult_mixed (int x, int n);
+int mult_fp (int x, int y);    // * between fp numbers
+int mult_mixed (int x, int n); // * between fp number and int
 
-int div_fp (int x, int y);
-int div_mixed (int x, int n);
+int div_fp (int x, int y);     // / between fp numbers
+int div_mixed (int x, int n);  // / between fp number and int
 
 // int to fp
 int

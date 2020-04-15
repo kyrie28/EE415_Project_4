@@ -95,15 +95,15 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
 ////////////////////////////////// EDITED ///////////////////////////////////
-    int64_t wakeup_tick;
+    int64_t wakeup_tick;                /* Stored ticks to wake up. */
 
-    int init_priority;
-    struct lock *wait_on_lock;
-    struct list donations;
-    struct list_elem donation_elem;
+    int init_priority;                  /* Stored initial priority. */
+    struct lock *wait_on_lock;          /* Points to lock thread is waiting. */
+    struct list donations;              /* List of donors. */
+    struct list_elem donation_elem;     /* List element for donation. */
 
-    int nice;
-    int recent_cpu;
+    int nice;                           /* Niceness of thread. */
+    int recent_cpu;                     /* CPU usage. */
 /////////////////////////////////////////////////////////////////////////////
     struct list_elem allelem;           /* List element for all threads list. */
 

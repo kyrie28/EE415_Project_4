@@ -67,17 +67,17 @@ sema_down (struct semaphore *sema)
 
   old_level = intr_disable ();
   while (sema->value == 0)
-    {
+  {
 ////////////////////////////////// EDITED ///////////////////////////////////
-      /* old code */
-      // list_push_back (&sema->waiters, &thread_current ()->elem);
-      list_insert_ordered (&sema->waiters, \
-                           &thread_current ()->elem, \
-                           cmp_priority, \
-                           NULL);
+ /* list_push_back (&sema->waiters, &thread_current ()->elem); (old code) */
+  // Insertion sort of wait list.
+    list_insert_ordered (&sema->waiters, \
+                         &thread_current ()->elem, \
+                         cmp_priority, \
+                         NULL);
 /////////////////////////////////////////////////////////////////////////////
-      thread_block ();
-    }
+    thread_block ();
+  }
   sema->value--;
   intr_set_level (old_level);
 }
@@ -115,26 +115,23 @@ sema_try_down (struct semaphore *sema)
 void
 sema_up (struct semaphore *sema)
 {
+////////////////////////////////// EDITED ///////////////////////////////////
   enum intr_level old_level;
 
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters))
-////////////////////////////////// EDITED ///////////////////////////////////
   {
+    // Sort list for the case when priorities are changed
     list_sort (&sema->waiters, cmp_priority, NULL);
-/////////////////////////////////////////////////////////////////////////////
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
-////////////////////////////////// EDITED ///////////////////////////////////
   }
-/////////////////////////////////////////////////////////////////////////////
   sema->value++;
-////////////////////////////////// EDITED ///////////////////////////////////
-  test_max_priority ();
-/////////////////////////////////////////////////////////////////////////////
+  test_max_priority (); // Do preemption.
   intr_set_level (old_level);
+/////////////////////////////////////////////////////////////////////////////
 }
 
 static void sema_test_helper (void *sema_);
@@ -222,16 +219,14 @@ lock_acquire (struct lock *lock)
     t->init_priority = thread_get_priority ();
     if (!thread_mlfqs && lock->holder->priority < thread_get_priority ())
     {
+      // Insert donation_elem to donation list
       list_push_back (&lock->holder->donations, &t->donation_elem);
-      donate_priority ();
+      donate_priority (); // Do priority donation.
     }
   }
-/////////////////////////////////////////////////////////////////////////////
 
   sema_down (&lock->semaphore);
-////////////////////////////////// EDITED ///////////////////////////////////
-  /* old code */
-  // lock->holder = thread_current ();
+  /* lock->holder = thread_current (); (old code) */
   thread_current ()->wait_on_lock = NULL;
   lock->holder = thread_current ();
 /////////////////////////////////////////////////////////////////////////////
@@ -272,8 +267,8 @@ lock_release (struct lock *lock)
 ////////////////////////////////// EDITED ///////////////////////////////////
   if (!thread_mlfqs)
   {
-    remove_with_lock (lock);
-    refresh_priority ();
+    remove_with_lock (lock); // remove donors
+    refresh_priority (); // refresh for multiple donation
   }
 /////////////////////////////////////////////////////////////////////////////
   sema_up (&lock->semaphore);
@@ -340,8 +335,8 @@ cond_wait (struct condition *cond, struct lock *lock)
 
   sema_init (&waiter.semaphore, 0);
 ////////////////////////////////// EDITED ///////////////////////////////////
-  /* old code */
-  // list_push_back (&cond->waiters, &waiter.elem);
+  /* list_push_back (&cond->waiters, &waiter.elem); (old code) */
+  // Insertion sort of waiters
   list_insert_ordered (&cond->waiters, &waiter.elem, cmp_sem_priority, NULL);
 /////////////////////////////////////////////////////////////////////////////
   lock_release (lock);
@@ -364,14 +359,13 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters))
 ////////////////////////////////// EDITED ///////////////////////////////////
+  if (!list_empty (&cond->waiters))
   {
+    // Sort list for the case when priorities are changed
     list_sort (&cond->waiters, cmp_sem_priority, NULL);
-/////////////////////////////////////////////////////////////////////////////
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
-////////////////////////////////// EDITED ///////////////////////////////////
   }
 /////////////////////////////////////////////////////////////////////////////
 }
@@ -393,6 +387,8 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 }
 
 ////////////////////////////////// EDITED ///////////////////////////////////
+/* compare two maximum priority of two semaphore_elem.
+  if first one is larger then return true, else return false. */
 bool
 cmp_sem_priority (const struct list_elem *a,
                   const struct list_elem *b,
