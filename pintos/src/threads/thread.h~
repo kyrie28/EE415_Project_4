@@ -4,12 +4,6 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-//////////////////////////////// PJ2 EDITED /////////////////////////////////
-#include "threads/synch.h"
-/////////////////////////////////////////////////////////////////////////////
-//////////////////////////////// PJ3 EDITED /////////////////////////////////
-#include <hash.h>
-/////////////////////////////////////////////////////////////////////////////
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -100,7 +94,7 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-//////////////////////////////// PJ1 EDITED /////////////////////////////////
+////////////////////////////////// EDITED ///////////////////////////////////
     int64_t wakeup_tick;                /* Stored ticks to wake up. */
 
     int init_priority;                  /* Stored initial priority. */
@@ -119,37 +113,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-
-//////////////////////////////// PJ2 EDITED /////////////////////////////////
-    struct thread *parent;              /* Points to parent process. */
-    struct list child_list;             /* List of siblings. */
-    struct list_elem childelem;         /* List element for children. */
-
-#define SUCCESS 1
-#define DEFAULT 0
-#define FAILURE -1
-    char load_flag;                     /* 1 / 0 / -1 if load succeeded
-                                           / not loaded / load failed. */
-    char exit_flag;                     /* 1 / 0 if process exited / not
-                                           exited. */
-    int exit_status;                    /* Status of exit. */
-    struct semaphore load_sema;         /* Semaphore for loading. */
-    struct semaphore exit_sema;         /* Semaphore for exit */
-
-    struct file **fd_table;             /* File descriptor table */
-    int fd_num;                         /* Maximum of allocated fds + 1 */
-
-    struct file *run_file;              /* Running file. */
-/////////////////////////////////////////////////////////////////////////////
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
-//////////////////////////////// PJ3 EDITED /////////////////////////////////
-    struct hash vm;                     /* hash table for vm */
-    struct list mmap_list;              /* list for memory mapped file */
-/////////////////////////////////////////////////////////////////////////////
   };
 
 /* If false (default), use round-robin scheduler.
@@ -169,7 +136,7 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
-//////////////////////////////// PJ1 EDITED /////////////////////////////////
+////////////////////////////////// EDITED ///////////////////////////////////
 void thread_sleep (int64_t ticks);
 void thread_awake (int64_t ticks);
 void update_next_tick_to_awake (int64_t ticks);
@@ -208,7 +175,7 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-//////////////////////////////// PJ1 EDITED /////////////////////////////////
+////////////////////////////////// EDITED ///////////////////////////////////
 void mlfqs_priority (struct thread *);
 void mlfqs_recent_cpu (struct thread *);
 void mlfqs_load_avg (void);

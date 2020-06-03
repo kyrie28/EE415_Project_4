@@ -21,6 +21,9 @@
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
 /////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+#include "vm/swap.h"
+/////////////////////////////////////////////////////////////////////////////
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -85,7 +88,12 @@ start_process (void *file_name_)
     strlcpy (parse[count - 1], token, strlen (token) + 1);
   }
   parse[count] = NULL;
-
+/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+  vm_init (&thread_current ()->vm);
+  list_init (&thread_current ()->mmap_list);
+/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// PJ2 EDITED /////////////////////////////////
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -98,7 +106,7 @@ start_process (void *file_name_)
   if (!success)
   {
     int i;
-    
+
     /* Free dynamically allocated memory */
     for (i = count - 1; i > -1; i--)
       free (parse[i]);
@@ -165,13 +173,17 @@ process_exit (void)
   uint32_t *pd;
 
 //////////////////////////////// PJ2 EDITED /////////////////////////////////
-  if (cur->run_file != NULL)
+  //if (cur->run_file != NULL)
     file_close (cur->run_file);
 
   /* Close all files and deallocate memory of file descriptor table */
   while (cur->fd_num > 2)
     process_close_file (cur->fd_num-- - 1);
   free (cur->fd_table);
+/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+  munmap (CLOSE_ALL);
+  vm_destroy (&cur->vm);
 /////////////////////////////////////////////////////////////////////////////
 
   /* Destroy the current process's page directory and switch back
@@ -616,6 +628,9 @@ static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable)
 {
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+  bool success = true;
+
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
@@ -629,32 +644,55 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
+      /*********** old code ***********/
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
+      //uint8_t *kpage = palloc_get_page (PAL_USER);
+      //if (kpage == NULL)
+        //return false;
 
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false;
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      //if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+        //{
+          //palloc_free_page (kpage);
+          //return false;
+        //}
+      //memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable))
-        {
-          palloc_free_page (kpage);
-          return false;
-        }
+      //if (!install_page (upage, kpage, writable))
+        //{
+          //palloc_free_page (kpage);
+          //return false;
+        //}
+      /********************************/
+
+      struct vm_entry *vme;
+
+      vme = (struct vm_entry *)malloc (sizeof (struct vm_entry));
+      if (vme == NULL)
+        return false;
+      memset (vme, 0, sizeof *vme);
+
+      vme->type = VM_BIN;
+      vme->vaddr = upage;
+      vme->writable = writable;
+      vme->is_loaded = false;
+      vme->file = file;
+
+      vme->offset = ofs;
+      vme->read_bytes = page_read_bytes;
+      vme->zero_bytes = page_zero_bytes;
+
+      success = success && insert_vme (&thread_current ()->vm, vme);
 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += page_read_bytes;
       upage += PGSIZE;
     }
-  return true;
+  return success;
+/////////////////////////////////////////////////////////////////////////////
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of
@@ -662,20 +700,80 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp)
 {
-  uint8_t *kpage;
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+  struct page *kpage;
   bool success = false;
+  struct vm_entry *vme;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = alloc_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
-    }
+  {
+    kpage->vme = vme;
+    success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
+    if (success)
+      *esp = PHYS_BASE;
+    else
+      __free_page (kpage);
+  }
+
+  vme = (struct vm_entry *)malloc (sizeof (struct vm_entry));
+  ASSERT (vme != NULL);
+  memset (vme, 0, sizeof *vme);
+
+  vme->type = VM_ANON;
+  vme->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  vme->writable = true;
+  vme->is_loaded = true;
+
+  success = success && insert_vme (&thread_current ()->vm, vme);
+/////////////////////////////////////////////////////////////////////////////
+
   return success;
 }
+
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+/* Handle page fault for the case when vm_entry exists, but
+   page does not. At first, allocate new page. And then it loads data
+   from disk to memory with considering the type of vm_entry.
+   Or if necessary, it expand the stack. Finally, map virtual
+   and physical page by using install_page().
+   if success, return true. Otherwise, return false. */
+bool
+handle_mm_fault (struct vm_entry *vme)
+{
+  /* Get a page of memory. */
+  struct page *kpage = alloc_page (PAL_USER);
+
+  if (kpage == NULL)
+    return false;
+  kpage->vme = vme;
+
+  switch (vme->type)
+  {
+    case VM_BIN:
+    case VM_FILE:
+      /* Load this page. */
+      if (!load_file (kpage->kaddr, vme))
+        goto handle_mm_fault_fail;
+      break;
+    case VM_ANON:
+      swap_in (vme->swap_slot, kpage->kaddr);
+      break;
+    default:
+      goto handle_mm_fault_fail;
+  }
+
+  /* Add the page to the process's address space. */
+  if (!install_page (vme->vaddr, kpage->kaddr, vme->writable))
+    goto handle_mm_fault_fail;
+
+  return true;
+
+handle_mm_fault_fail:
+  __free_page (kpage);
+  return false;
+}
+/////////////////////////////////////////////////////////////////////////////
 
 /* Adds a mapping from user virtual address UPAGE to kernel
    virtual address KPAGE to the page table.

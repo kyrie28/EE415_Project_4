@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 /* A counting semaphore. */
-struct semaphore 
+struct semaphore
   {
     unsigned value;             /* Current value. */
     struct list waiters;        /* List of waiting threads. */
@@ -17,8 +17,14 @@ bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
 
+//////////////////////////////// PJ1 EDITED /////////////////////////////////
+bool cmp_sem_priority (const struct list_elem *a,
+                       const struct list_elem *b,
+                       void *aux);
+/////////////////////////////////////////////////////////////////////////////
+
 /* Lock. */
-struct lock 
+struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
@@ -31,7 +37,7 @@ void lock_release (struct lock *);
 bool lock_held_by_current_thread (const struct lock *);
 
 /* Condition variable. */
-struct condition 
+struct condition
   {
     struct list waiters;        /* List of waiting threads. */
   };

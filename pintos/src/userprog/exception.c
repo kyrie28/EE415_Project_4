@@ -4,7 +4,12 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#include "userprog/syscall.h" /* PJ2 EDITED */
+//////////////////////////////// PJ2 EDITED /////////////////////////////////
+#include "userprog/syscall.h"
+/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+#include "userprog/process.h"
+/////////////////////////////////////////////////////////////////////////////
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -127,6 +132,9 @@ page_fault (struct intr_frame *f)
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+  struct vm_entry *vme;
+/////////////////////////////////////////////////////////////////////////////
 
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
@@ -149,7 +157,15 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  exit (-1); /* PJ2 EDITED */
+//////////////////////////////// PJ3 EDITED /////////////////////////////////
+  /*********** old code ***********/
+  //exit (-1); /* PJ2 EDITED */
+  /********************************/
+  vme = check_address (fault_addr, f->esp);
+  if (not_present && handle_mm_fault (vme))
+    return;
+  if (write)
+    exit (-1);
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
@@ -160,4 +176,5 @@ page_fault (struct intr_frame *f)
           write ? "writing" : "reading",
           user ? "user" : "kernel");
   kill (f);
+/////////////////////////////////////////////////////////////////////////////
 }
