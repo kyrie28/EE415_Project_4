@@ -23,6 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
 #include "vm/swap.h"
+#include "vm/frame.h"
 /////////////////////////////////////////////////////////////////////////////
 
 static thread_func start_process NO_RETURN;
@@ -173,7 +174,7 @@ process_exit (void)
   uint32_t *pd;
 
 //////////////////////////////// PJ2 EDITED /////////////////////////////////
-  //if (cur->run_file != NULL)
+  if (cur->run_file != NULL)
     file_close (cur->run_file);
 
   /* Close all files and deallocate memory of file descriptor table */
@@ -701,34 +702,39 @@ static bool
 setup_stack (void **esp)
 {
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
-  struct page *kpage;
-  bool success = false;
-  struct vm_entry *vme;
+  struct page *kpage = NULL;
+  struct vm_entry *vme = NULL;
 
   kpage = alloc_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL)
-  {
-    kpage->vme = vme;
-    success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
-    if (success)
-      *esp = PHYS_BASE;
-    else
-      __free_page (kpage);
-  }
+  if (kpage == NULL)
+    goto setup_stack_fail;
+  if (!install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true))
+    goto setup_stack_fail;
+  *esp = PHYS_BASE;
 
   vme = (struct vm_entry *)malloc (sizeof (struct vm_entry));
-  ASSERT (vme != NULL);
-  memset (vme, 0, sizeof *vme);
+  if (vme == NULL)
+    goto setup_stack_fail;
 
+  memset (vme, 0, sizeof *vme);
+  kpage->vme = vme;
   vme->type = VM_ANON;
   vme->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   vme->writable = true;
   vme->is_loaded = true;
 
-  success = success && insert_vme (&thread_current ()->vm, vme);
-/////////////////////////////////////////////////////////////////////////////
+  if (!insert_vme (&thread_current ()->vm, vme))
+    goto setup_stack_fail;
 
-  return success;
+  return true;
+
+setup_stack_fail:
+  if (vme != NULL)
+    free (vme);
+  if (kpage != NULL)
+    __free_page (kpage);
+  return false;
+/////////////////////////////////////////////////////////////////////////////
 }
 
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
@@ -772,6 +778,55 @@ handle_mm_fault (struct vm_entry *vme)
 handle_mm_fault_fail:
   __free_page (kpage);
   return false;
+}
+
+/* Expand stack to include given ADDR.
+   This function repeatedly allocate page from lower to higher address
+   until all stack pages are allocated.
+   Only expand when addr is less than esp - 32.
+   Maximum stack size is 8MB. */
+bool
+expand_stack (void *addr)
+{
+  void *upage = pg_round_down (addr);
+
+  while (upage < PHYS_BASE && find_vme (upage) == NULL)
+  {
+    struct page *kpage = NULL;
+    struct vm_entry *vme = NULL;
+
+    kpage = alloc_page (PAL_USER | PAL_ZERO);
+    if (kpage == NULL)
+      goto expand_stack_fail;
+    if (!install_page (upage, kpage->kaddr, true))
+      goto expand_stack_fail;
+
+    vme = (struct vm_entry *)malloc (sizeof (struct vm_entry));
+    if (vme == NULL)
+      goto expand_stack_fail;
+
+    memset (vme, 0, sizeof *vme);
+    kpage->vme = vme;
+    vme->type = VM_ANON;
+    vme->vaddr = upage;
+    vme->writable = true;
+    vme->is_loaded = true;
+
+    if (!insert_vme (&thread_current ()->vm, vme))
+      goto expand_stack_fail;
+
+    upage += PGSIZE;
+    continue;
+
+  expand_stack_fail:
+    if (vme != NULL)
+      free (vme);
+    if (kpage != NULL)
+      __free_page (kpage);
+    return false;
+  }
+
+  return true;
 }
 /////////////////////////////////////////////////////////////////////////////
 

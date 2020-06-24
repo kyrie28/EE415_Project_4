@@ -19,5 +19,10 @@ off_t inode_write_at (struct inode *, const void *, off_t size, off_t offset);
 void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
+//////////////////////////////// PJ4 EDITED /////////////////////////////////
+struct inode_disk;
+bool inode_update_file_length (struct inode_disk *inode_disk,
+                               off_t start_pos, off_t end_pos);
+/////////////////////////////////////////////////////////////////////////////
 
 #endif /* filesys/inode.h */

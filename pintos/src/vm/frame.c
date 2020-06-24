@@ -124,6 +124,8 @@ try_to_free_pages (enum palloc_flags flags)
       else
         pagedir_set_accessed (pagedir, cur_page->vme->vaddr, false);
     }
+
+    lru_clock = get_next_lru_clock ();
   }
 
   switch (victim->vme->type)

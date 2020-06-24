@@ -16,6 +16,7 @@
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
 #include <string.h>
 #include "threads/malloc.h"
+#include "vm/frame.h"
 /////////////////////////////////////////////////////////////////////////////
 
 static void syscall_handler (struct intr_frame *);
@@ -108,7 +109,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       munmap (arg[0]);
       break;
     default:
-      printf ("Error: invalid system call\n");
+      printf ("Error: invalid system call %d\n", *(int *)f->esp);
       thread_exit ();
   }
 }

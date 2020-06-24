@@ -30,12 +30,6 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-////////////////////////////////// EDITED ///////////////////////////////////
-#define NICE_DEFAULT 0
-#define RECENT_CPU_DEFAULT 0
-#define LOAD_AVG_DEFAULT 0
-/////////////////////////////////////////////////////////////////////////////
-
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -100,17 +94,6 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-//////////////////////////////// PJ1 EDITED /////////////////////////////////
-    int64_t wakeup_tick;                /* Stored ticks to wake up. */
-
-    int init_priority;                  /* Stored initial priority. */
-    struct lock *wait_on_lock;          /* Points to lock thread is waiting. */
-    struct list donations;              /* List of donors. */
-    struct list_elem donation_elem;     /* List element for donation. */
-
-    int nice;                           /* Niceness of thread. */
-    int recent_cpu;                     /* CPU usage. */
-/////////////////////////////////////////////////////////////////////////////
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -169,26 +152,6 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
-//////////////////////////////// PJ1 EDITED /////////////////////////////////
-void thread_sleep (int64_t ticks);
-void thread_awake (int64_t ticks);
-void update_next_tick_to_awake (int64_t ticks);
-int64_t get_next_tick_to_awake (void);
-
-#define PRIORITY_OF(LIST_ELEM) \
-        (list_entry (LIST_ELEM, struct thread, elem)->priority)
-#define PRIORITY_OF_DONATION(LIST_ELEM) \
-        (list_entry (LIST_ELEM, struct thread, donation_elem)->priority)
-void test_max_priority (void);
-bool cmp_priority (const struct list_elem *a,
-                   const struct list_elem *b,
-                   void *aux UNUSED);
-
-void donate_priority (void);
-void remove_with_lock (struct lock *lock);
-void refresh_priority (void);
-/////////////////////////////////////////////////////////////////////////////
-
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
@@ -207,13 +170,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-//////////////////////////////// PJ1 EDITED /////////////////////////////////
-void mlfqs_priority (struct thread *);
-void mlfqs_recent_cpu (struct thread *);
-void mlfqs_load_avg (void);
-void mlfqs_increment (void);
-void mlfqs_recalc (void);
-/////////////////////////////////////////////////////////////////////////////
 
 #endif /* threads/thread.h */

@@ -1,4 +1,7 @@
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
+#ifndef VM_FRAME_H
+#define VM_FRAME_H
+
 #include "vm/page.h"
 #include "threads/palloc.h"
 
@@ -11,4 +14,6 @@ void free_page (void *kaddr);
 void __free_page (struct page *page);
 
 void *try_to_free_pages (enum palloc_flags flags);
+
+#endif /* vm/frame.h */
 /////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,7 @@
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
+#ifndef VM_PAGE_H
+#define VM_PAGE_H
+
 #include <hash.h>
 #include <list.h>
 
@@ -45,4 +48,6 @@ bool insert_vme (struct hash *vm, struct vm_entry *vme);
 bool delete_vme (struct hash *vm, struct vm_entry *vme);
 struct vm_entry *find_vme (const void *vaddr);
 bool load_file (void *kaddr, struct vm_entry *vme);
+
+#endif /* vm/page.h */
 /////////////////////////////////////////////////////////////////////////////

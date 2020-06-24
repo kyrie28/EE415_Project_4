@@ -9,6 +9,7 @@
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
 #include "userprog/process.h"
+#include "threads/vaddr.h"
 /////////////////////////////////////////////////////////////////////////////
 
 /* Number of page faults processed. */
@@ -158,12 +159,23 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
 //////////////////////////////// PJ3 EDITED /////////////////////////////////
-  /*********** old code ***********/
-  //exit (-1); /* PJ2 EDITED */
-  /********************************/
+  // exit (-1); /* PJ2 EDITED */ /* old code */
   vme = check_address (fault_addr, f->esp);
-  if (not_present && handle_mm_fault (vme))
-    return;
+  if (not_present)
+  {
+    if (vme)
+    {
+      if (handle_mm_fault (vme))
+        return;
+    }
+    else if (fault_addr >= f->esp - 32 && fault_addr >= PHYS_BASE - (1 << 23))
+    {
+      if (expand_stack (fault_addr))
+        return;
+    }
+    else
+      exit (-1);
+  }
   if (write)
     exit (-1);
 
